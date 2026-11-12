@@ -1,0 +1,62 @@
+const { WebSocketServer } = require('ws');
+const net = require('net');
+
+const wss = new WebSocketServer({ port: process.env.PORT || 10000 });
+
+console.log('Gateway de Radio iniciado correctamente...');
+
+wss.on('connection', (ws) => {
+    let targetSocket = null;
+
+    ws.on('message', (message, isBinary) => {
+        // Si es texto, es el paquete de configuración inicial con las credenciales
+        if (!isBinary) {
+            try {
+                const config = JSON.parse(message.toString());
+                console.log(`Conectando a ${config.host}:${config.port} (${config.type})`);
+
+                // Abrir conexión TCP directa hacia el servidor de streaming (Zeno, Shoutcast, Icecast, etc.)
+                targetSocket = new net.Socket();
+                targetSocket.connect(config.port, config.host, () => {
+                    console.log('Conexión TCP establecida con el servidor externo.');
+                    
+                    if (config.type === 'icecast') {
+                        // Cabecera básica HTTP/ICY para Icecast Source
+                        const auth = Buffer.from(`source:${config.password}`).toString('base64');
+                        const header = `SOURCE ${config.mount} HTTP/1.0\r\n` +
+                                       `Authorization: Basic ${auth}\r\n` +
+                                       `Content-Type: audio/mpeg\r\n\r\n`;
+                        targetSocket.write(header);
+                    } else {
+                        // Shoutcast suele requerir la contraseña en el header o de forma directa
+                        targetSocket.write(`${config.password}\r\n`);
+                    }
+                });
+
+                targetSocket.on('error', (err) => {
+                    console.error('Error en socket TCP:', err.message);
+                    ws.send(JSON.stringify({ status: 'error', message: err.message }));
+                });
+
+                targetSocket.on('close', () => {
+                    console.log('Conexión TCP cerrada.');
+                });
+
+            } catch (e) {
+                console.error('Error al procesar configuración:', e);
+            }
+        } else {
+            // Si es binario, es el flujo de audio del micrófono que enviamos al servidor de streaming
+            if (targetSocket && targetSocket.writable) {
+                targetSocket.write(message);
+            }
+        }
+    });
+
+    ws.on('close', () => {
+        if (targetSocket) {
+            targetSocket.end();
+        }
+        console.log('Cliente desconectado del WebSocket.');
+    });
+});
