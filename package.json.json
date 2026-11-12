@@ -1,0 +1,13 @@
+{
+  "name": "radio-websocket-gateway",
+  "version": "1.0.0",
+  "description": "Puente de WebSockets para Icecast/Shoutcast",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "ws": "^8.16.0",
+    "net": "^1.0.2"
+  }
+}
