@@ -1,8 +1,0 @@
-{
-  "name": "radio-encoder-gateway",
-  "version": "2.0.0",
-  "main": "server.js",
-  "scripts": { "start": "node server.js" },
-  "engines": { "node": ">=18" },
-  "dependencies": { "ffmpeg-static": "^5.2.0", "ws": "^8.18.0" }
-}
